@@ -19,7 +19,6 @@ class HighYieldStrategy implements InterestStrategy
             $remaining = ($balance - 10000) * 0.05;
             $annualInterest = $firstTier + $remaining;
         }
-
         return $annualInterest / 12; // Monthly
     }
 }

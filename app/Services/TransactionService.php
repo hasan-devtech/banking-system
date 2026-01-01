@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\TransactionCreated;
+use App\Models\OutboxEvent;
 use App\Models\Transaction;
 use App\Models\Account;
 use Illuminate\Pipeline\Pipeline;
@@ -24,7 +25,12 @@ class TransactionService
             'status' => 'pending_approval', // Default
         ]);
 
-        TransactionCreated::dispatch($transaction);
+        OutboxEvent::create([
+            'type' => TransactionCreated::class,
+            'payload' => [
+                'transaction_id' => $transaction->id,
+            ],
+        ]);
 
         // 2. Run the Pipeline (Chain of Responsibility)
         return app(Pipeline::class)
@@ -49,9 +55,9 @@ class TransactionService
         return app(Pipeline::class)
             ->send($transaction)
             ->through([
-                // ValidateBalance is skipped logic internally for deposits
-                ValidateBalance::class, 
-                // Deposits usually auto-approve, but you can keep rules if needed
+                    // ValidateBalance is skipped logic internally for deposits
+                ValidateBalance::class,
+                    // Deposits usually auto-approve, but you can keep rules if needed
                 ExecutePayment::class,
             ])
             ->thenReturn();
@@ -70,21 +76,21 @@ class TransactionService
         // 1. Re-validate Balance (Crucial Step!)
         // The user might have spent funds while waiting for admin.
         if ($transaction->fromAccount) {
-             if (!$transaction->fromAccount->state->canWithdraw()) {
-                 $transaction->update(['status' => 'failed']);
-                 throw new \Exception("Account is now frozen/suspended.");
-             }
-             
-             if ($transaction->fromAccount->balance < $transaction->amount) {
-                 $transaction->update(['status' => 'failed']);
-                 throw new \Exception("Insufficient funds (Balance changed during wait).");
-             }
+            if (!$transaction->fromAccount->state->canWithdraw()) {
+                $transaction->update(['status' => 'failed']);
+                throw new \Exception("Account is now frozen/suspended.");
+            }
+
+            if ($transaction->fromAccount->balance < $transaction->amount) {
+                $transaction->update(['status' => 'failed']);
+                throw new \Exception("Insufficient funds (Balance changed during wait).");
+            }
         }
 
         // 2. Execute the Payment
         // We can manually call the ExecutePayment handler or logic here.
         // Since we are bypassing the pipeline (we already validated rules), we call logic directly.
-        
+
         DB::transaction(function () use ($transaction) {
             if ($transaction->type === 'transfer') {
                 // For transfers, BOTH must exist. If one is missing, throw an error to rollback.
