@@ -13,11 +13,11 @@ class AccountFactory extends Factory
     public function definition()
     {
         return [
-            'user_id' => User::factory(),
+            'user_id' => User::inRandomOrder()->first()->id,
             'account_number' => $this->faker->unique()->bankAccountNumber,
             'type' => $this->faker->randomElement(['savings', 'checking']),
             'status' => 'active',
-            'balance' => $this->faker->randomFloat(2, 0, 10000),
+            'balance' => $this->faker->randomFloat(2, 500, 10000),
             'currency' => 'USD',
         ];
     }

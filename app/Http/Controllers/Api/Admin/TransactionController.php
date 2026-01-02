@@ -28,7 +28,6 @@ class TransactionController extends Controller
             ->with(['fromAccount.user', 'toAccount'])
             ->orderBy('created_at', 'asc')
             ->get();
-
         return ApiResponseHelper::sendResponse(200, 'Pending transactions retrieved', TransactionResource::collection($pending));
     }
 
