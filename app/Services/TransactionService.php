@@ -16,31 +16,29 @@ class TransactionService
 {
     public function createTransfer(Account $from, Account $to, float $amount)
     {
-        // 1. Create the Transaction Record (Initial State)
-        $transaction = Transaction::create([
-            'from_account_id' => $from->id,
-            'to_account_id' => $to->id,
-            'amount' => $amount,
-            'type' => 'transfer',
-            'status' => 'pending_approval', // Default
-        ]);
-
-        OutboxEvent::create([
-            'type' => TransactionCreated::class,
-            'payload' => [
-                'transaction_id' => $transaction->id,
-            ],
-        ]);
-
-        // 2. Run the Pipeline (Chain of Responsibility)
-        return app(Pipeline::class)
-            ->send($transaction)
-            ->through([
-                ValidateBalance::class,
-                CheckApprovalRules::class,
-                ExecutePayment::class,
-            ])
-            ->thenReturn();
+        return DB::transaction(function () use ($from, $to, $amount) {
+            $fromAccount = Account::where('id', $from->id)->lockForUpdate()->first();
+            $transaction = Transaction::create([
+                'from_account_id' => $from->id,
+                'to_account_id' => $to->id,
+                'amount' => $amount,
+                'type' => 'transfer',
+                'status' => 'processing',
+            ]);
+            $transaction->setRelation('fromAccount', $fromAccount);
+            OutboxEvent::create([
+                'type' => TransactionCreated::class,
+                'payload' => ['transaction_id' => $transaction->id],
+            ]);
+            return app(Pipeline::class)
+                ->send($transaction)
+                ->through([
+                    ValidateBalance::class, 
+                    CheckApprovalRules::class,
+                    ExecutePayment::class,
+                ])
+                ->thenReturn();
+        });
     }
 
     public function deposit(Account $to, float $amount)

@@ -17,7 +17,7 @@ class AccountFactory extends Factory
             'account_number' => $this->faker->unique()->bankAccountNumber,
             'type' => $this->faker->randomElement(['savings', 'checking']),
             'status' => 'active',
-            'balance' => $this->faker->randomFloat(2, 500, 10000),
+            'balance' => 100000.00,
             'currency' => 'USD',
         ];
     }

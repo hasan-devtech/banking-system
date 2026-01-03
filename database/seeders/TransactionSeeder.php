@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Account;
 use App\Models\Transaction;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -13,7 +14,10 @@ class TransactionSeeder extends Seeder
      */
     public function run(): void
     {
-        Transaction::factory()->count(200)->create();
-        Transaction::factory()->failedWaitingForFunds()->create();
+        $accounts = Account::all();
+        Transaction::factory(500)->create([
+            'from_account_id' => fn() => $accounts->random()->id,
+            'to_account_id' => fn() => $accounts->random()->id,
+        ]);
     }
 }

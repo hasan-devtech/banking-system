@@ -58,11 +58,8 @@ class TransactionController extends Controller
 
         // 1. Fetch Source Account
         $fromAccount = Account::findOrFail($validated['from_account_id']);
-        
-        // 2. Authorize Withdraw/Transfer from Source
-        Gate::authorize('withdraw', $fromAccount);
 
-        // 3. Fetch Target Account
+        // 2. Fetch Target Account
         $toAccount = Account::where('account_number', $validated['to_account_number'])->firstOrFail();
 
         // Prevent self-transfer loop if needed
@@ -70,11 +67,14 @@ class TransactionController extends Controller
             return ApiResponseHelper::sendResponse(400, 'Cannot transfer to the same account');
         }
 
+        // 3. Authorize Withdraw/Transfer from Source
+        Gate::authorize('withdraw', $fromAccount);
+
         try {
             // 4. Delegate to Service (Facade)
             $transaction = $this->transactionService->createTransfer(
-                $fromAccount, 
-                $toAccount, 
+                $fromAccount,
+                $toAccount,
                 $validated['amount']
             );
 

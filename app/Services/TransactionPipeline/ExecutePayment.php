@@ -17,36 +17,28 @@ class ExecutePayment
 
     public function handle($transaction, Closure $next)
     {
-        // 1. Call External Gateway (Adapter Pattern)
-        // Only if it involves external money (like deposit/withdrawal)
-        // Internal transfers might skip this or use LocalBankAdapter
-        
         if ($transaction->type === 'deposit') {
-             $externalId = $this->gateway->charge(
-                 $transaction->amount, 
-                 'USD', 
-                 ['tx_id' => $transaction->id]
-             );
-             $transaction->provider_transaction_id = $externalId;
+            $externalId = $this->gateway->charge(
+                $transaction->amount, 
+                'USD', 
+                ['tx_id' => $transaction->id]
+            );
+            $transaction->provider_transaction_id = $externalId;
         }
 
-        // 2. Update Database Balances (Atomic Transaction)
-        DB::transaction(function () use ($transaction) {
-            
-            // Lock rows for concurrency safety
-            // In high volume, use optimistic locking, but pessimistic is safer for banking
-            
-            if ($transaction->fromAccount) {
-                $transaction->fromAccount->decrement('balance', $transaction->amount);
-            }
+        
+        if ($transaction->from_account_id) {
+            DB::table('accounts')
+                ->where('id', $transaction->from_account_id)
+                ->decrement('balance', $transaction->amount);
+        }
 
-            if ($transaction->toAccount) {
-                $transaction->toAccount->increment('balance', $transaction->amount);
-            }
-
-            $transaction->status = 'completed';
-            $transaction->save();
-        });
+        if ($transaction->to_account_id) {
+            DB::table('accounts')
+                ->where('id', $transaction->to_account_id)
+                ->increment('balance', $transaction->amount);
+        }
+        $transaction->update(['status' => 'completed']);
 
         return $next($transaction);
     }

@@ -21,13 +21,15 @@ class UserFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    protected static int $userSequence = 1;
     public function definition(): array
     {
+        $index = self::$userSequence++;
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
+            'name' => "JMeter Test User $index",
+            'email' => "user{$index}@example.com",
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
+            'password' => Hash::make('password'),
             'remember_token' => Str::random(10),
             'role' => 'customer',
             'is_active' => true,
@@ -39,7 +41,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'email_verified_at' => null,
         ]);
     }

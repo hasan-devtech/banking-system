@@ -18,17 +18,17 @@ class AccountService
         // 1. Hierarchy Validation (Composite Rule)
         if (isset($data['parent_id'])) {
             $parent = Account::find($data['parent_id']);
-            
+
             if (!$parent) {
                 throw new InvalidArgumentException("Parent account not found.");
             }
-            
+
             if ($parent->user_id !== $user->id) {
                 throw new Exception("Unauthorized: Cannot link to a parent account you do not own.");
             }
-            
+
             if ($parent->currency !== ($data['currency'] ?? 'USD')) {
-               throw new Exception("Child account currency must match parent.");
+                throw new Exception("Child account currency must match parent.");
             }
         }
 
@@ -57,11 +57,20 @@ class AccountService
      */
     public function getUserHierarchy(User $user)
     {
-        // Get only root accounts (parents) and eager load their children recursively
-        return Account::where('user_id', $user->id)
-            ->whereNull('parent_id')
-            ->with('allChildren') 
-            ->get();
+        $accounts = Account::where('user_id', $user->id)->get();
+        $lookup = $accounts->keyBy('id');
+        $tree = collect();
+        foreach ($accounts as $account) {
+            if (!$account->relationLoaded('allChildren')) {
+                $account->setRelation('allChildren', collect());
+            }
+            if ($account->parent_id && isset($lookup[$account->parent_id])) {
+                $lookup[$account->parent_id]->allChildren->push($account);
+            } else {
+                $tree->push($account);
+            }
+        }
+        return $tree;
     }
 
     /**

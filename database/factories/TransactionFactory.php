@@ -15,8 +15,8 @@ class TransactionFactory extends Factory
     {
         return [
             'uuid' => (string) Str::uuid(),
-            'from_account_id' => Account::factory(),
-            'to_account_id' => Account::factory(),
+            'from_account_id' => null,
+            'to_account_id' => null,
             'amount' => $this->faker->randomFloat(2, 10, 1000),
             'type' => $this->faker->randomElement(['deposit', 'withdrawal', 'transfer']),
             'status' => $this->faker->randomElement(['pending', 'completed', 'failed', 'failed_waiting_for_funds', 'pending_approval']),

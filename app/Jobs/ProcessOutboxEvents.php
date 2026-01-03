@@ -34,6 +34,7 @@ class ProcessOutboxEvents implements ShouldQueue
                 if (!$transaction) {
                     return;
                 }
+                logger($outbox);
                 event(new $outbox->type($transaction));
                 $outbox->update([
                     'processed_at' => now()
